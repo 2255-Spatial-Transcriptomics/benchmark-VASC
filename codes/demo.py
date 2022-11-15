@@ -3,16 +3,21 @@ import numpy as np
 from vasc import vasc
 from helpers import clustering,measure,print_2D
 from config import config
+from pathlib import Path
+import os
 
 if __name__ == '__main__':
+    CWD = os.path.dirname(os.path.realpath(__file__))
+    DATAPATH = str(Path(CWD).parent) + '/data/'
+    print(DATAPATH)
     DATASET = 'biase' #sys.argv[1]
     PREFIX = 'biase' #sys.argv[2]
     
-    filename = DATASET+'.txt'
+    filename = DATAPATH + DATASET + '.txt'
     data = open( filename )
     head = data.readline().rstrip().split()
     
-    label_file = open( DATASET+'_label.txt' )
+    label_file = open( DATAPATH + DATASET+'_label.txt' )
     label_dict = {}
     for line in label_file:
         temp = line.rstrip().split()
@@ -103,11 +108,10 @@ if __name__ == '__main__':
 #    pollen.close()
 #    
     
-    #print("============SUMMARY==============")
-    #k = len(np.unique(label))
-    #for r in res:
-    #    print("======"+str(r.shape[1])+"========")
-    #    pred,si = clustering( r,k=k )
-    #    if label is not None:
-    #        metrics = measure( pred,label )
-    #
+    print("============SUMMARY==============")
+    k = len(np.unique(label))
+    for r in res:
+        print("======"+str(r.shape[1])+"========")
+        pred,si = clustering( r,k=k )
+        if label is not None:
+            metrics = measure( pred,label )
