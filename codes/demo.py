@@ -81,17 +81,19 @@ if __name__ == '__main__':
 #            dim2 = res_data['RES5']
 #            print(np.max(dim2))
         
-        print(res.shape)
-        k = len( np.unique(label) )
-        cl,_ = clustering( res,k=k)
-        dm = measure( cl,label )
+        
+        # breakpoint()
+        # print('res[5].shape',res[5].shape)
+        # k = len( np.unique(label) )
+        # cl,_ = clustering( res[5],k=k)
+        # dm = measure( cl,label )
         
 #            res_data.close()
         ### analysis results
         # plot loss
         
         # plot 2-D visulation
-        fig = print_2D( points=res,label=label,id_map=id_map )
+        # fig = print_2D( points=res,label=label,id_map=id_map )
 #        fig.savefig('embryo.eps')
 #        fig = print_2D( points=res_data['RES5'],label=label,id_map=id_map )
 #        fig.show()

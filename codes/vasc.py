@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from keras.layers import Input,Dense,Activation,Lambda,RepeatVector,merge,Reshape,Layer,Dropout,BatchNormalization,Permute
+import keras
+from keras.layers import Input,Dense,Activation,Lambda,RepeatVector,Concatenate,Multiply,Reshape,Layer,Dropout,BatchNormalization,Permute
 import keras.backend as K
 from keras.models import Model
 from helpers import measure,clustering,print_2D,print_heatmap,cart2polar,outliers_detection
@@ -11,6 +12,8 @@ from keras.optimizers import RMSprop,Adagrad,Adam
 from keras import metrics
 from config import config
 import h5py
+from tensorflow.python.framework.ops import disable_eager_execution
+disable_eager_execution()   
 
 tau = 1.0
 
@@ -119,18 +122,20 @@ class VASC:
         expr_x_drop_log = Lambda( lambda x:K.log(x+1e-20) )(expr_x_drop_p)        
         expr_x_drop_log = Reshape( target_shape=(self.in_dim,1) )(expr_x_drop_log)
         expr_x_nondrop_log = Reshape( target_shape=(self.in_dim,1) )(expr_x_nondrop_log)     
-        logits = merge( [expr_x_drop_log,expr_x_nondrop_log],mode='concat',concat_axis=-1 )
-        
+        # logits = merge( [expr_x_drop_log,expr_x_nondrop_log],mode='concat',concat_axis=-1 )
+        # breakpoint()
+        logits = Concatenate(axis=-1)([expr_x_drop_log,expr_x_nondrop_log])
         temp_in = Input( shape=(self.in_dim,) )
         temp_ = RepeatVector( 2 )(temp_in)
-        print(temp_.shape)
+        print('temp_.shape',temp_.shape)
         temp_ = Permute( (2,1) )(temp_)
         samples = Lambda( gumbel_softmax,output_shape=(self.in_dim,2,) )( [logits,temp_] )          
         samples = Lambda( lambda x:x[:,:,1] )(samples)
         samples = Reshape( target_shape=(self.in_dim,) )(samples)      
 ##        #print(samples.shape)
         
-        out = merge( [expr_x,samples],mode='mul' )
+        # out = merge( [expr_x,samples],mode='mul' )
+        out = Multiply()([expr_x,samples])
 
         class VariationalLayer(Layer):
             def __init__(self, **kwargs):
@@ -156,8 +161,8 @@ class VASC:
         y = VariationalLayer()([expr_in, out])
         vae = Model( inputs= [expr_in,temp_in],outputs=y )
         
-        opt = RMSprop( lr=0.001 )
-        vae.compile( optimizer=opt,loss=None )
+        opt = RMSprop(learning_rate=0.001 )
+        vae.compile(optimizer=opt,loss=None )
         
         ae = Model( inputs=[expr_in,temp_in],outputs=[ h1,h2,h3,h2_relu,h3_relu,
                                                        z_mean,z,decoder_h1,decoder_h1_relu,
@@ -257,14 +262,13 @@ def vasc( expr,
         #mask[ expr_train==0 ] = 0.0
         if e % 100 == 0 and annealing:
             tau = max( tau0*np.exp( -anneal_rate * e),min_tau   )
-            print(tau)
+            print('tau',tau)
 
         tau_in = np.ones( expr_train.shape,dtype='float32' ) * tau
         #print(tau_in.shape)
-        
-        loss_ = vae_.vae.fit( [expr_train,tau_in],expr_train,epochs=1,batch_size=batch_size,
-                             shuffle=True,verbose=0
-                             )
+        # breakpoint()
+        # loss_ = vae_.vae.fit( [expr_train,tau_in],expr_train,epochs=1,batch_size=batch_size,shuffle=True,verbose=0)
+        loss_ = vae_.vae.fit( [expr_train, tau_in],epochs=1,batch_size=batch_size,shuffle=True,verbose=0)
         train_loss = loss_.history['loss'][0]
         cur_loss = min(train_loss,cur_loss)
         loss.append( train_loss )
@@ -275,17 +279,27 @@ def vasc( expr,
             k=len(np.unique(label))
             
         if e % patience == 1:
-            print( "Epoch %d/%d"%(e+1,epoch) )
+            print( "Epoch %d/%d"%(e,epoch) )
             print( "Loss:"+str(train_loss) )
             if abs(cur_loss-prev_loss) < 1 and e > min_stop:
+                print('current loss - prev loss < 1, breaking')
                 break
-            prev_loss = train_loss
-            if label is not None:
-                try:
-                    cl,_ = clustering( res[5],k=k )
-                    measure( cl,label )
-                except:
-                    print('Clustering error')    
+            
+            normalized_expression = np.log2(expr+1)
+            for i in range(normalized_expression.shape[0]):
+                normalized_expression[i,:] = normalized_expression[i,:] / np.max(normalized_expression[i,:])
+
+            reconstructed_expression = res[-1]
+            
+            measure(normalized_expression, reconstructed_expression)
+        
+            # prev_loss = train_loss
+            # if label is not None:
+            #     try:
+            #         cl,_ = clustering( res[5],k=k )
+            #         measure( cl,label )
+            #     except:
+            #         print('Clustering error')    
                     
     #
     ### analysis results
@@ -302,7 +316,7 @@ def vasc( expr,
         count += 1
     aux_res.close()
     
-    return res[5]
+    return res
     
     
     

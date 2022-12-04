@@ -101,8 +101,11 @@ def print_heatmap( points,label,id_map ):
     return g.fig
 
 def measure( predicted,true ):
+    # NMI measures how corrleated two datasets are. 1 = perfect correlation, 0 = no correlation
     NMI = normalized_mutual_info_score( true,predicted )
     print("NMI:"+str(NMI))
+    
+    # computes simi
     RAND = adjusted_rand_score( true,predicted )
     print("RAND:"+str(RAND))
     HOMO = homogeneity_score( true,predicted )
