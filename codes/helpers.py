@@ -103,15 +103,14 @@ def print_heatmap( points,label,id_map ):
 def measure( predicted,true ):
     # NMI measures how corrleated two datasets are. 1 = perfect correlation, 0 = no correlation
     NMI = normalized_mutual_info_score( true,predicted )
-    print("NMI:"+str(NMI))
     
     # computes simi
     RAND = adjusted_rand_score( true,predicted )
-    print("RAND:"+str(RAND))
+
     HOMO = homogeneity_score( true,predicted )
-    print("HOMOGENEITY:"+str(HOMO))
+
     COMPLETENESS = completeness_score( true,predicted )
-    print("COMPLETENESS:"+str(COMPLETENESS))
+
     return {'NMI':NMI,'RAND':RAND,'HOMOGENEITY':HOMO,'COMPLETENESS':COMPLETENESS}
 
 def clustering( points, k=2,name='kmeans'):

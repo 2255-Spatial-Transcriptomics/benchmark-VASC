@@ -12,15 +12,19 @@ from keras.optimizers import RMSprop,Adagrad,Adam
 from keras import metrics
 from config import config
 import h5py
+import tensorflow as tf
 from tensorflow.python.framework.ops import disable_eager_execution
+
 disable_eager_execution()   
 
 tau = 1.0
 
 def sampling(args):
     epsilon_std = 1.0
-    
-    if len(args) == 2:
+
+    args = tf.convert_to_tensor(args)
+
+    if args.shape[0] == 2:
         z_mean, z_log_var = args
         epsilon = K.random_normal(shape=K.shape(z_mean), 
                               mean=0.,
@@ -127,7 +131,7 @@ class VASC:
         logits = Concatenate(axis=-1)([expr_x_drop_log,expr_x_nondrop_log])
         temp_in = Input( shape=(self.in_dim,) )
         temp_ = RepeatVector( 2 )(temp_in)
-        print('temp_.shape',temp_.shape)
+        # print('temp_.shape',temp_.shape)
         temp_ = Permute( (2,1) )(temp_)
         samples = Lambda( gumbel_softmax,output_shape=(self.in_dim,2,) )( [logits,temp_] )          
         samples = Lambda( lambda x:x[:,:,1] )(samples)
@@ -175,8 +179,8 @@ class VASC:
         self.ae = ae
         self.aux = aux
 
-def vasc( expr,
-          epoch = 5000,
+def train_vasc( expr,
+          epochs = 5000,
           latent=2,
           patience=50,
           min_stop=500,
@@ -196,7 +200,7 @@ def vasc( expr,
     ============
     Parameters:
         expr: expression matrix (n_cells * n_features)
-        epoch: maximum number of epochs, default 5000
+        epochs: maximum number of epochs, default 5000
         latent: dimension of latent variables, default 2
         patience: stop if loss showes insignificant decrease within *patience* epochs, default 50
         min_stop: minimum number of epochs, default 500
@@ -246,7 +250,7 @@ def vasc( expr,
     
     vae_ = VASC( in_dim=expr.shape[1],latent=latent,var=var )
     vae_.vaeBuild()
-    #print_summary( vae_.vae )
+    # print_summary( vae_.vae )
     
     points = []
     loss = []
@@ -255,17 +259,17 @@ def vasc( expr,
     tau = tau0
     #min_tau = 0.5
     anneal_rate = 0.0003
-    for e in range(epoch):
+    for e in range(epochs):
         cur_loss = prev_loss
         
         #mask = np.ones( expr_train.shape,dtype='float32' )
         #mask[ expr_train==0 ] = 0.0
         if e % 100 == 0 and annealing:
             tau = max( tau0*np.exp( -anneal_rate * e),min_tau   )
-            print('tau',tau)
+            # print('tau',tau)
 
         tau_in = np.ones( expr_train.shape,dtype='float32' ) * tau
-        #print(tau_in.shape)
+        # print('tau', tau)
         # breakpoint()
         # loss_ = vae_.vae.fit( [expr_train,tau_in],expr_train,epochs=1,batch_size=batch_size,shuffle=True,verbose=0)
         loss_ = vae_.vae.fit( [expr_train, tau_in],epochs=1,batch_size=batch_size,shuffle=True,verbose=0)
@@ -277,9 +281,10 @@ def vasc( expr,
         points.append( res[5] )
         if label is not None:
             k=len(np.unique(label))
+            # k = np.unique(label).shape[0]
             
         if e % patience == 1:
-            print( "Epoch %d/%d"%(e,epoch) )
+            print( "Epoch %d/%d"%(e,epochs) )
             print( "Loss:"+str(train_loss) )
             if abs(cur_loss-prev_loss) < 1 and e > min_stop:
                 print('current loss - prev loss < 1, breaking')
@@ -291,7 +296,8 @@ def vasc( expr,
 
             reconstructed_expression = res[-1]
             
-            measure(normalized_expression, reconstructed_expression)
+
+            # measure(normalized_expression, reconstructed_expression)
         
             # prev_loss = train_loss
             # if label is not None:
@@ -316,7 +322,7 @@ def vasc( expr,
         count += 1
     aux_res.close()
     
-    return res
+    return vae_, loss
     
     
     
