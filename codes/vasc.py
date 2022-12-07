@@ -182,7 +182,7 @@ class VASC:
 def train_vasc( expr,
           epochs = 5000,
           latent=2,
-          patience=50,
+          patience=10,
           min_stop=500,
           batch_size=32,
           var = False,
@@ -286,8 +286,9 @@ def train_vasc( expr,
         if e % patience == 1:
             print( "Epoch %d/%d"%(e,epochs) )
             print( "Loss:"+str(train_loss) )
-            if abs(cur_loss-prev_loss) < 1 and e > min_stop:
-                print('current loss - prev loss < 1, breaking')
+            print("current loss: ", cur_loss, "previous loss:", prev_loss)
+            if abs(cur_loss-prev_loss) < 0.1:
+                print('current loss - prev loss < 0.1, breaking')
                 break
             
             normalized_expression = np.log2(expr+1)
@@ -299,7 +300,7 @@ def train_vasc( expr,
 
             # measure(normalized_expression, reconstructed_expression)
         
-            # prev_loss = train_loss
+            prev_loss = train_loss
             # if label is not None:
             #     try:
             #         cl,_ = clustering( res[5],k=k )

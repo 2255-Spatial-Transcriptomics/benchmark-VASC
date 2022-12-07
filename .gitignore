@@ -1,4 +1,6 @@
 checkpoints
 .vscode
 __pycache__
-.h5
+*.h5
+*.tsv
+*.mtx
